@@ -1,0 +1,12 @@
+tool: keenable
+live_limit:          # Keenable allows 10/s per organization
+  rps: 8
+  concurrent: 8
+setups:
+  keenable:
+    name: Keenable
+    options:
+      usd_per_credit: 0.004   # prices the credits Keenable reports per call
+    pricing:         # $4 per 1,000 requests, keenable.ai/pricing (checked 2026-11-02)
+      list_usd: 0.004
+      fetch_usd: 0.004

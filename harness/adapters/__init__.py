@@ -16,6 +16,7 @@ from ..search_api import Adapter, VendorCall
 from .brave import Brave
 from .exa import Exa
 from .firecrawl import Firecrawl
+from .keenable import Keenable
 from .nimble import Nimble
 from .parallel import Parallel
 from .perplexity import Perplexity
@@ -29,7 +30,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 
 ADAPTERS: dict[str, type[Adapter]] = {
     "exa": Exa, "parallel": Parallel, "you": You, "tavily": Tavily, "nimble": Nimble, "firecrawl": Firecrawl,
-    "tako": Tako, "tinyfish": TinyFish, "perplexity": Perplexity, "brave": Brave, "serp": Serp,
+    "tako": Tako, "tinyfish": TinyFish, "keenable": Keenable, "perplexity": Perplexity, "brave": Brave, "serp": Serp,
 }
 
 REGISTRY: dict[str, Adapter] = {}

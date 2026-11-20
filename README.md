@@ -6,7 +6,7 @@ Measures which web search API helps an agent answer financial research questions
 
 - [`data/`](data/README.md) — Where the public questions live and what each file holds.
 - [`harness/`](harness/README.md) — Runs the agent and calls each search API.
-- [`tools/`](tools/README.md) — One config file per search tool (11 tools, 17 setups).
+- [`tools/`](tools/README.md) — One config file per search tool (12 tools, 18 setups).
 - [`judge/`](judge/README.md) — Grades the agent's answers against ground truth.
 
 Coding agents can start with [`AGENTS.md`](AGENTS.md).
