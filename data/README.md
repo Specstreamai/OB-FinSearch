@@ -1,12 +1,21 @@
 # data
 
-The public questions live on Hugging Face at `openbenchmarks/OB-FinSearch`, not in this folder. `finsearch run` downloads them. Pass `--data` to use a local folder or a single `.jsonl` file instead.
+No question files are committed to this folder.
 
-- `historical-lookup.jsonl` — Questions the agent answers with one search. Each line has `id`, `question`, `answer`, and `tolerance`.
-- `multi-hop-lookup.jsonl` — Questions that need several searches. Same fields.
-- `live-lookup.jsonl` — Stocks and coins asked about right after a market moment. Each line has `id`, `asset` (`equity` or `crypto`), `name`, `ticker`, and `query_template`.
+## Public vs. held-out evaluation sets
 
-Live lookup is graded against answer keys, passed with `--closes` and `--coin-key`:
+- **Public split:** Hosted on Hugging Face at [`openbenchmarks/OB-FinSearch`](https://huggingface.co/datasets/openbenchmarks/OB-FinSearch). `finsearch run` downloads it automatically; pass `--data <path>` to use a local folder or single `.jsonl` file instead.
+- **Held-out split (private):** Evaluation sets used for published boards stay private so tools cannot train on them.
 
-- `live-closes.jsonl` — One line per date and stock: the official close and the close before it.
-- `live-coins.jsonl` — One line per coin and minute: the lowest and highest traded price in that minute.
+## Files and schema
+
+| File | Description | Fields |
+|---|---|---|
+| `historical-lookup.jsonl` | Single-search factual finance questions. | `id`, `question`, `answer`, `tolerance` |
+| `multi-hop-lookup.jsonl` | Multi-search financial synthesis questions. | `id`, `question`, `answer`, `tolerance` |
+| `live-lookup.jsonl` | Stocks and crypto assets queried right after a market moment. | `id`, `asset` (`equity` or `crypto`), `name`, `ticker`, `query_template` |
+
+Live lookup runs are graded against answer keys passed via `--closes` and `--coin-key`:
+
+- `live-closes.jsonl` — One line per date and stock: official close and prior close.
+- `live-coins.jsonl` — One line per coin and minute: lowest and highest traded price in that minute.
