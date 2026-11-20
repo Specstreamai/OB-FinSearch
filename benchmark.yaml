@@ -1,0 +1,7 @@
+name: OB-FinSearch
+order:
+  serves: Teams choosing a web search API for financial research agents (equities, filings, crypto, market data).
+  win: Higher answer accuracy on financial research questions under the same model, budget, and day.
+  budget_usd: 0
+  refresh_days: 30
+  not_measured_max: 0.1
