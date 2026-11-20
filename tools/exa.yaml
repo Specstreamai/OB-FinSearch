@@ -1,0 +1,19 @@
+tool: exa
+live_limit:
+  rps: 8
+  concurrent: 16
+setups:
+  exa_instant:
+    name: Exa instant
+    options:
+      kind: instant
+    pricing:
+      list_usd: 0.007
+      fetch_usd: 0.001
+  exa_deep:
+    name: Exa deep
+    options:
+      kind: deep
+    pricing:
+      list_usd: 0.012
+      fetch_usd: 0.001

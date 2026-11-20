@@ -1,0 +1,16 @@
+tool: you
+setups:
+  you_highlights:
+    name: You.com highlights
+    options:
+      core: false
+    pricing:
+      list_usd: 0.005
+      fetch_usd: 0.001
+  you_highlights_core:
+    name: You.com highlights core
+    options:
+      core: true
+    pricing:
+      list_usd: 0.005
+      fetch_usd: 0.001

@@ -1,0 +1,10 @@
+tool: tinyfish
+live_limit:
+  per_minute: 30
+  concurrent: 2
+setups:
+  tinyfish:
+    name: TinyFish
+    pricing:
+      list_usd: 0.0
+      fetch_usd: 0.0

@@ -1,0 +1,18 @@
+tool: tavily
+setups:
+  tavily:
+    name: Tavily advanced
+    options:
+      depth: advanced
+      extra:
+        chunks_per_source: 3
+    pricing:
+      list_usd: 0.016
+      fetch_usd: 0.0032
+  tavily_basic:
+    name: Tavily basic
+    options:
+      depth: basic
+    pricing:
+      list_usd: 0.008
+      fetch_usd: 0.0032

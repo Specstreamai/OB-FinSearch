@@ -1,0 +1,7 @@
+tool: firecrawl
+setups:
+  firecrawl:
+    name: Firecrawl
+    pricing:
+      list_usd: 0.005
+      fetch_usd: 0.0025

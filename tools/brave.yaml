@@ -1,0 +1,6 @@
+tool: brave
+setups:
+  brave:
+    name: Brave Search
+    pricing:
+      list_usd: 0.005

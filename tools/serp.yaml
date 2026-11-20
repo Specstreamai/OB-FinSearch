@@ -1,0 +1,9 @@
+tool: serp
+live_limit:
+  rps: 5
+  concurrent: 5
+setups:
+  serp:
+    name: SERP (RapidAPI)
+    pricing:
+      list_usd: 0.003

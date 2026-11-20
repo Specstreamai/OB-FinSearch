@@ -1,0 +1,9 @@
+tool: tako
+live_limit:
+  concurrent: 4
+setups:
+  tako:
+    name: Tako
+    pricing:
+      list_usd: 0.007
+      fetch_usd: 0.001

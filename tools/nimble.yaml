@@ -1,0 +1,14 @@
+tool: nimble
+setups:
+  nimble_standard:
+    name: Nimble standard
+    options:
+      depth: standard
+    pricing:
+      list_usd: 0.005
+  nimble_lite:
+    name: Nimble lite
+    options:
+      depth: lite
+    pricing:
+      list_usd: 0.0011
