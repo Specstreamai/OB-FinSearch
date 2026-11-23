@@ -27,7 +27,7 @@ from . import adapters
 
 ET = ZoneInfo("America/New_York")
 UTC = timezone.utc
-DEFAULT_OFFSETS = (5, 30, 60, 900, 3600, 10800)
+DEFAULT_OFFSETS = (60, 900, 3600)   # 1 min, 15 min, 1 h after the target
 
 # NYSE / Nasdaq calendar. Other years: pass --close-time.
 HOLIDAYS = {date(2026, 1, 1), date(2026, 1, 19), date(2026, 2, 16), date(2026, 4, 3), date(2026, 5, 25),

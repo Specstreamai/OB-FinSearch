@@ -1,6 +1,6 @@
 # OB-FinSearch
 
-Open, independent benchmark of web search APIs for financial research agents: which search API helps an agent answer questions about equities, filings and crypto, including live stock closes and coin prices. The agent, prompt, search budget and grader stay fixed; only the search API changes. Search APIs measured: Brave, Exa, Firecrawl, Nimble, Parallel, Perplexity, SERP, Tako, Tavily, TinyFish and You.com.
+Open, independent benchmark of web search APIs for financial research agents: which search API helps an agent answer questions about equities, filings and crypto, including live stock closes and coin prices. The agent, prompt, search budget and grader stay fixed; only the search API changes. Search APIs measured: Brave, Exa, Firecrawl, Keenable, Nimble, Parallel, Perplexity, SERP, Tako, Tavily, TinyFish and You.com.
 
 **Public dataset:** [`openbenchmarks/OB-FinSearch`](https://huggingface.co/datasets/openbenchmarks/OB-FinSearch)
 
