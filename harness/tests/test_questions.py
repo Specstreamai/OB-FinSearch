@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from harness.questions import load_live_items, load_questions
+from harness.questions import load_live_filings, load_live_items, load_questions
 
 
 def _write(path, rows):
@@ -27,6 +27,15 @@ def test_single_file_needs_a_class(tmp_path):
         load_questions(str(f))
 
 
+def test_single_file_reads_lookup(tmp_path):
+    f = tmp_path / "x.jsonl"
+    _write(f, [{"id": "a", "question": "Q", "answer": "A", "lookup": "multi_hop", "search": "single"},
+               {"id": "b", "question": "Q", "answer": "A", "lookup": "historical"}])
+    qs = {q["id"]: q for q in load_questions(str(f))}
+    assert qs["a"]["search"] == "multi" and qs["a"]["task"] == "multi-hop-lookup"
+    assert qs["b"]["search"] == "single"
+
+
 def test_duplicate_ids_rejected(tmp_path):
     f = tmp_path / "x.jsonl"
     _write(f, [{"id": "a", "question": "Q", "answer": "A", "search": "single"}] * 2)
@@ -48,3 +57,19 @@ def test_live_items_need_a_query_template(tmp_path):
         load_live_items(str(tmp_path))
     _write(f, [{"id": "x", "asset": "crypto", "name": "XRP", "ticker": "XRP", "query_template": "{{date}}"}])
     assert load_live_items(str(tmp_path))[0]["ticker"] == "XRP"
+
+
+def test_live_filings_need_a_filing_time(tmp_path):
+    f = tmp_path / "live-filings.jsonl"
+    row = {"id": "f1", "question": "Q", "answer": "A", "filed_at": "2026-11-17T21:00:00Z"}
+    _write(f, [row])
+    assert load_live_filings(str(tmp_path))[0]["tolerance"] == ""
+    _write(f, [{**row, "filed_at": ""}])
+    with pytest.raises(ValueError, match="filed_at"):
+        load_live_filings(str(f))
+    _write(f, [{**row, "filed_at": "2026-11-17T21:00:00"}])
+    with pytest.raises(ValueError, match="time zone"):
+        load_live_filings(str(f))
+    _write(f, [{**row, "filed_at": "yesterday"}])
+    with pytest.raises(ValueError, match="ISO 8601"):
+        load_live_filings(str(f))

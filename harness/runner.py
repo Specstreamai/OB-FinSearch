@@ -114,14 +114,14 @@ def run(questions: list[dict], vendor_keys: list[str], *, out_dir: Path, repeats
     return out_dir
 
 
-def rejudge(out_dir: Path, questions: list[dict], ids: set[str] | None = None) -> None:
+def rejudge(out_dir: Path, questions: list[dict], ids: set[str] | None = None, model: str = JUDGE_MODEL) -> None:
     """Re-grade rows whose judge call failed, or, with ids, every row of those questions against the current
-    answer keys. Rows are rewritten in place after a backup."""
+    answer keys, with the judge model the run was graded by. Rows are rewritten in place after a backup."""
     qs = {q["id"]: q for q in questions}
     rows = read_rows(out_dir)
     backup = out_dir / f"results.before_rejudge_{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
     backup.write_text("".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in rows))
-    grader = judge_client()
+    grader = judge_client(model)
     todo = [r for r in rows if r.get("judge_error") or (ids and r["question_id"] in ids)]
     missing = sorted({r["question_id"] for r in todo} - set(qs))
     if missing:
@@ -131,11 +131,11 @@ def rejudge(out_dir: Path, questions: list[dict], ids: set[str] | None = None) -
         q = qs[r["question_id"]]
         r.pop("judge_error", None)
         try:
-            r.update(judge(grader, q, r["answer"]))
+            r.update(judge(grader, q, r["answer"], model=model))
         except Exception as exc:  # noqa: BLE001 - stays marked; run rejudge again
             r.update({"correct": False, "reason": "", "judge_error": f"{type(exc).__name__}: {exc}"[:500]})
         r["reference_answer"], r["tolerance"] = q["answer"], q.get("tolerance", "")
-        r["judge_cost_usd"] = round(config.llm_cost(JUDGE_MODEL, r.get("judge_input_tokens") or 0, 0,
+        r["judge_cost_usd"] = round(config.llm_cost(model, r.get("judge_input_tokens") or 0, 0,
                                              r.get("judge_output_tokens") or 0), 6)
 
     with ThreadPoolExecutor(max_workers=16) as pool:

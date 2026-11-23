@@ -11,9 +11,12 @@ No question files are committed to this folder.
 
 | File | Description | Fields |
 |---|---|---|
-| `historical-lookup.jsonl` | Single-search factual finance questions. | `id`, `question`, `answer`, `tolerance` |
-| `multi-hop-lookup.jsonl` | Multi-search financial synthesis questions. | `id`, `question`, `answer`, `tolerance` |
+| `historical-lookup.jsonl` | A figure from one company or series: a filing, often read with its earnings call. 2 searches. | `id`, `question`, `answer`, `tolerance` |
+| `multi-hop-lookup.jsonl` | Figures pulled from several companies, quarters or releases into a ranking, trend or comparison. 6 searches. | `id`, `question`, `answer`, `tolerance` |
 | `live-lookup.jsonl` | Stocks and crypto assets queried right after a market moment. | `id`, `asset` (`equity` or `crypto`), `name`, `ticker`, `query_template` |
+| `live-filings.jsonl` | Questions about company filings published the same day. | `id`, `question`, `answer`, `tolerance`, `filed_at` (ISO 8601 with time zone) |
+
+A single `.jsonl` file passed with `--data` sets each row's task with `lookup` (`historical` or `multi_hop`). An `answer` may end with `Also accept: ...` (other correct answers) and `Wrong: ...` (likely wrong answers); the judge reads both.
 
 Live lookup runs are graded against answer keys passed via `--closes` and `--coin-key`:
 

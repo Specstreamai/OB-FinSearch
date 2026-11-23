@@ -8,6 +8,7 @@
   finsearch live-collect --date 2026-10-07 --assets equity --vendors exa_instant
   finsearch live-collect --date 2026-10-07 --assets crypto --target 2026-10-07T17:30:00Z
   finsearch live-grade runs/live/<stamp> --closes keys/ --coin-key keys/   grade against the answer keys
+  finsearch live-filings --data live-filings.jsonl --vendors exa_instant,tavily   live filings, graded
 """
 
 from __future__ import annotations
@@ -64,12 +65,17 @@ def cmd_run(args) -> None:
 
 
 def cmd_rejudge(args) -> None:
-    from .questions import load_questions
+    from .live_filings import TASK as LIVE_FILINGS
+    from .questions import load_live_filings, load_questions
     from .runner import rejudge
 
     out_dir = Path(args.run_dir)
     m = json.loads((out_dir / "manifest.json").read_text())
-    rejudge(out_dir, load_questions(args.data or m["data"]), ids=set(args.ids.split(",")) if args.ids else None)
+    from judge.answer_judge import JUDGE_MODEL
+
+    load = load_live_filings if m.get("task") == LIVE_FILINGS else load_questions
+    rejudge(out_dir, load(args.data or m["data"]), ids=set(args.ids.split(",")) if args.ids else None,
+            model=m.get("judge") or JUDGE_MODEL)
 
 
 def cmd_summary(args) -> None:
@@ -112,6 +118,30 @@ def cmd_live_grade(args) -> None:
     assets = tuple(a for a in args.assets.split(",") if a)
     grade(Path(args.run_dir), assets, close_source=close_source(args.closes, args.close_source),
           coin_source=coin_source(args.coin_key, args.coin_source))
+
+
+def cmd_live_filings(args) -> None:
+    from .live_filings import run
+    from .questions import load_live_filings
+    from .runner import check_env
+
+    out_dir = Path(args.resume) if args.resume else Path(args.out) / time.strftime("%Y%m%d-%H%M%S")
+    manifest = out_dir / "manifest.json"
+    if args.resume and manifest.exists():          # a resumed run keeps its settings
+        m = json.loads(manifest.read_text())
+        args.data, args.vendors = m["data"], ",".join(m["vendors"])
+        args.today, args.ids = m["today_in_prompt"], ",".join(m["question_ids"])
+    if not args.data:
+        raise SystemExit("--data is required (a live-filings.jsonl file or a folder holding it)")
+    questions = load_live_filings(args.data)
+    if args.ids:
+        wanted = set(args.ids.split(","))
+        questions = [q for q in questions if q["id"] in wanted]
+    if not questions:
+        raise SystemExit("no live filings questions selected")
+    keys = _vendor_list(args.vendors)
+    check_env(keys)
+    run(questions, keys, out_dir=out_dir, today=args.today, data_label=args.data, concurrency=args.concurrency)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -170,6 +200,16 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--coin-key", default="", help="coin answer key: a JSONL file, a folder, hf:<owner>/<name>, or mock")
     p.add_argument("--coin-source", default="", help="module:Class implementing CoinSource (gets --coin-key as its argument)")
     p.set_defaults(fn=cmd_live_grade)
+
+    p = sub.add_parser("live-filings", help="live filings: ask every vendor each question once, graded")
+    p.add_argument("--data", default="", help="live-filings.jsonl, a folder holding it, or hf:<owner>/<name>[@rev]")
+    p.add_argument("--vendors", default="exa_instant")
+    p.add_argument("--today", default=config.DEFAULT_TODAY, help="date the agent is told is today")
+    p.add_argument("--ids", default="", help="comma-separated question ids")
+    p.add_argument("--out", default="runs/live-filings")
+    p.add_argument("--resume", default="", help="run directory to continue")
+    p.add_argument("--concurrency", type=int, default=32)
+    p.set_defaults(fn=cmd_live_filings)
 
     args = ap.parse_args(argv)
     for m in args.vendor_module:

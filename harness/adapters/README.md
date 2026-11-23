@@ -11,6 +11,7 @@ One file per search API. Each turns a query into that API's request and its repl
 - `firecrawl.py` — Firecrawl search and page scrape.
 - `tako.py` — Tako search and page contents. Live lookup also asks for Tako's price cards.
 - `tinyfish.py` — TinyFish search and page fetch.
+- `keenable.py` — Keenable search (pro and realtime modes).
 - `perplexity.py` — Perplexity search. No page fetch.
 - `brave.py` — Brave search. No page fetch.
 - `serp.py` — Google results through a RapidAPI endpoint. No page fetch.

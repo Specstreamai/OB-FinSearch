@@ -25,3 +25,26 @@ def test_all_row_pools_tasks():
     rows = [row("a", "x", 0, True), row("m", "x", 0, False, task="multi-hop-lookup")]
     cells = {c["task"]: c for c in compute_summary(rows)["cells"]}
     assert cells["all"]["accuracy"] == 0.5 and cells["all"]["questions"] == 2
+
+
+def test_filing_age_bands():
+    rows = [row("a", "x", 0, True, task="live-filings", age_s=600),
+            row("b", "x", 0, False, task="live-filings", age_s=9000),
+            row("c", "x", 0, True, task="live-filings", age_s=9000),
+            row("d", "x", 0, True, task="live-filings", age_s=40000, judge_error="parse")]
+    age = {a["band"]: a for a in compute_summary(rows)["age"]}
+    assert age["under 2 h"]["accuracy"] == 1.0 and age["2 to 6 h"]["accuracy"] == 0.5
+    assert "6 h and over" not in age                # judge errors are left out
+    assert compute_summary([row("a", "x", 0, True)])["age"] == []
+
+
+def test_answers_whose_every_search_failed_are_left_out_and_counted():
+    failed = [{"status": "error", "latency_ms": 900}]
+    rows = [row("a", "x", 0, True, searches=[{"status": "ok", "latency_ms": 100}], wall_ms=2000, input_tokens=10),
+            row("b", "x", 0, False, searches=failed, vendor_error=True, wall_ms=3000, input_tokens=5)]
+    s = compute_summary(rows)
+    cell = next(c for c in s["cells"] if c["task"] == "historical-lookup")
+    assert cell["accuracy"] == 1.0 and s["vendor_errors"] == 1
+    u = s["usage"][0]
+    assert u["vendor_errors"] == 1 and u["failed_calls"] == 1 and u["search_ms_median"] == 100
+    assert u["input_tokens"] == 15 and u["wall_ms_median"] == 2000
