@@ -8,4 +8,8 @@ When you have the answer, reply with:
 Answer: <the direct answer, with every figure, unit and date the question asks for>
 Sources: <the URLs you used>
 
+Give one value for each part the question asks for. If sources disagree, say which value you chose and why.
+Answer for the exact entity, period and measure asked.
+Give figures at the precision the source reports; don't round them.
+
 If the results don't contain the answer, give your best answer from what you found and say what is missing. Never invent a figure.

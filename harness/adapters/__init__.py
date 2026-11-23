@@ -16,6 +16,7 @@ from ..search_api import Adapter, VendorCall
 from .brave import Brave
 from .exa import Exa
 from .firecrawl import Firecrawl
+from .keenable import Keenable
 from .nimble import Nimble
 from .parallel import Parallel
 from .perplexity import Perplexity
@@ -29,7 +30,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 
 ADAPTERS: dict[str, type[Adapter]] = {
     "exa": Exa, "parallel": Parallel, "you": You, "tavily": Tavily, "nimble": Nimble, "firecrawl": Firecrawl,
-    "tako": Tako, "tinyfish": TinyFish, "perplexity": Perplexity, "brave": Brave, "serp": Serp,
+    "tako": Tako, "tinyfish": TinyFish, "perplexity": Perplexity, "brave": Brave, "serp": Serp, "keenable": Keenable,
 }
 
 REGISTRY: dict[str, Adapter] = {}
@@ -75,12 +76,17 @@ def get(key: str) -> Adapter:
     return REGISTRY[key]
 
 
-def search(key: str, query: str, *, max_results: int = 10, live: bool = False) -> VendorCall:
+def search(key: str, query: str, *, max_results: int = 10, live: bool = False,
+           objective: str | None = None) -> VendorCall:
     """live=True only from live lookup: adapters may switch on freshness options there (see Adapter).
-    The flag is passed only when set, so an adapter that overrides search() without it still works."""
+    `objective` goes only to objective_search adapters. Flags are passed only when set, so an adapter that
+    overrides search() without them still works."""
+    adapter = get(key)
     if live:
-        return get(key).search(query, max_results=max_results, live=True)
-    return get(key).search(query, max_results=max_results)
+        return adapter.search(query, max_results=max_results, live=True)
+    if adapter.objective_search and objective:
+        return adapter.search(query, max_results=max_results, objective=objective)
+    return adapter.search(query, max_results=max_results)
 
 
 def fetch(key: str, url: str, *, objective: str, max_chars: int) -> VendorCall:

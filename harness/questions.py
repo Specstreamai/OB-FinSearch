@@ -4,19 +4,24 @@
   hf:<owner>/<name>[@<revision>]   a Hugging Face dataset repo with historical-lookup.jsonl,
                                     multi-hop-lookup.jsonl and live-lookup.jsonl at its root (the default)
   <directory>                       a local folder with the same files
-  <file>.jsonl                      one file; each row needs id, question, answer, tolerance and either
-                                    `search` (single | multi) or `task` (historical-lookup | multi-hop-lookup)
+  <file>.jsonl                      one file; each row needs id, question, answer, tolerance and one of
+                                    `lookup` (historical | multi_hop), `task` (historical-lookup |
+                                    multi-hop-lookup) or `search` (single | multi)
+
+Live filings questions are read from live-filings.jsonl the same way (load_live_filings).
 """
 
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from . import config
 
 TASK_FILES = {task: f"{task}.jsonl" for task in config.CONFIGS}
 LIVE_FILE = "live-lookup.jsonl"
+LIVE_FILINGS_FILE = "live-filings.jsonl"
 
 
 def _read_jsonl(path: Path) -> list[dict]:
@@ -43,10 +48,12 @@ def _normalise(row: dict, task: str | None, source: str) -> dict:
     q.setdefault("question", q.get("query"))
     if task:
         q["search"] = config.CONFIGS[task]
+    elif q.get("lookup") in config.LOOKUPS:
+        q["search"] = config.LOOKUPS[q["lookup"]]
     elif q.get("task") in config.CONFIGS:
         q["search"] = config.CONFIGS[q["task"]]
     if q.get("search") not in ("single", "multi"):
-        raise ValueError(f"{source}: row {q.get('id')} has no search class (set `search` or `task`)")
+        raise ValueError(f"{source}: row {q.get('id')} has no search class (set `lookup`, `task` or `search`)")
     q["task"] = "historical-lookup" if q["search"] == "single" else "multi-hop-lookup"
     for k in ("id", "question", "answer"):
         if not q.get(k):
@@ -86,4 +93,30 @@ def load_live_items(data: str = "") -> list[dict]:
         missing = [k for k in ("id", "name", "ticker", "query_template") if not r.get(k)]
         if missing:
             raise ValueError(f"{path}: live item {r.get('id')} is missing {', '.join(missing)}")
+    return rows
+
+
+def load_live_filings(data: str = "") -> list[dict]:
+    """Live filings questions: id, question, answer, tolerance and filed_at (when the filing became public)."""
+    kind, where = _source(data)
+    if kind == "local" and Path(where).is_file():
+        path = Path(where)
+    else:
+        path = _hf_file(where, LIVE_FILINGS_FILE) if kind == "hf" else Path(where) / LIVE_FILINGS_FILE
+    rows = _read_jsonl(path)
+    for r in rows:
+        missing = [k for k in ("id", "question", "answer", "filed_at") if not r.get(k)]
+        if missing:
+            raise ValueError(f"{path}: live filings question {r.get('id')} is missing {', '.join(missing)}")
+        try:
+            filed = datetime.fromisoformat(str(r["filed_at"]).replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError(f"{path}: live filings question {r.get('id')} has filed_at {r['filed_at']!r}; "
+                             "expected an ISO 8601 time") from None
+        if filed.tzinfo is None:
+            raise ValueError(f"{path}: live filings question {r.get('id')} has filed_at without a time zone")
+        r.setdefault("tolerance", "")
+    ids = [r["id"] for r in rows]
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate question ids in the live filings file")
     return rows

@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+bedrock = ["anthropic[bedrock]>=0.121,<1"]
 
 [project.scripts]
 finsearch = "harness.cli:main"

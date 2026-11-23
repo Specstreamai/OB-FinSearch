@@ -1,7 +1,7 @@
 """The search-API adapter interface and the shared HTTP plumbing.
 
 An adapter turns a query into one HTTP request and the response into a list of hits
-(url, title, snippet). Vendors with a documented page-extraction endpoint also implement fetch.
+(url, title, snippet, and the publication date when the API returns one). Vendors with a documented page-extraction endpoint also implement fetch.
 There is deliberately no generic HTTP fetch fallback: a vendor without a native fetch is search-only,
 so every vendor is measured on what its own API returns.
 """
@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import re
 import socket
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.parse import urlparse
 
@@ -81,6 +83,39 @@ def reported_cost(payload: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return total if total >= 0 else None
+
+
+DATE_KEYS = ("published_at", "publishedDate", "publish_date", "page_age", "date", "timestamp")
+
+
+def _day(value: Any) -> str | None:
+    """A date value as YYYY-MM-DD: ISO strings keep their date part, Unix timestamps are read as UTC."""
+    if isinstance(value, bool) or value in (None, ""):
+        return None
+    if isinstance(value, (int, float)) or (isinstance(value, str) and value.strip().isdigit()):
+        try:
+            return datetime.fromtimestamp(int(value), timezone.utc).date().isoformat()
+        except (OverflowError, OSError, ValueError):
+            return None
+    m = re.match(r"\d{4}-\d{2}-\d{2}", str(value).strip())
+    return m.group(0) if m else None
+
+
+def result_dates(payload: Any) -> dict[str, str]:
+    """URL -> publication date, from every result object in a response that carries both."""
+    dates: dict[str, str] = {}
+    stack = [payload]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            url = node.get("url") or node.get("link")
+            day = next((d for d in (_day(node.get(k)) for k in DATE_KEYS) if d), None)
+            if isinstance(url, str) and day:
+                dates.setdefault(url, day)
+            stack.extend(node.values())
+    return dates
 
 
 def env(name: str) -> str:
@@ -164,6 +199,8 @@ class Adapter:
     fetch_unit_cost_usd: float | None = None
     live_limit: dict[str, float] | None = None  # live-lookup pacing per API key: rps, per_minute, concurrent
     native_fetch: bool = False
+    objective_search: bool = False         # the API takes a research objective with the keyword query; the agent
+                                           # then writes both, and search_request gets `objective`
 
     # --- search ---
     def search_request(self, query: str, max_results: int) -> HttpRequest:
@@ -194,13 +231,29 @@ class Adapter:
     def fetch_cost(self) -> float | None:
         return self.fetch_unit_cost_usd
 
-    def search(self, query: str, *, max_results: int = 10, live: bool = False) -> VendorCall:
-        """live=True is live lookup: the live_* hooks are used instead of search_request / parse_hits."""
-        call = send(self.live_search_request(query, max_results) if live else self.search_request(query, max_results))
+    def reported_cost(self, payload: Any) -> float | None:
+        """The call's cost as the response reports it, or None to use the list price."""
+        return reported_cost(payload)
+
+    def search(self, query: str, *, max_results: int = 10, live: bool = False,
+               objective: str | None = None) -> VendorCall:
+        """live=True is live lookup: the live_* hooks are used instead of search_request / parse_hits.
+        `objective` reaches search_request only on an objective_search API."""
+        if live:
+            req = self.live_search_request(query, max_results)
+        elif self.objective_search:
+            req = self.search_request(query, max_results, objective=objective)
+        else:
+            req = self.search_request(query, max_results)
+        call = send(req)
         if call.status == "ok":
             payload = call.raw_response if isinstance(call.raw_response, dict) else {}
             call.hits = self.live_parse_hits(payload, max_results) if live else self.parse_hits(payload, max_results)
-            reported = reported_cost(call.raw_response)
+            dates = result_dates(call.raw_response)
+            for h in call.hits:
+                if dates.get(h.get("url")):
+                    h["published"] = dates[h["url"]]
+            reported = self.reported_cost(call.raw_response)
             call.cost_usd = reported if reported is not None else self.search_unit_cost_usd
         else:
             call.hits, call.cost_usd = [], 0.0
@@ -221,6 +274,6 @@ class Adapter:
                              "text": str(text)[:max_chars], "truncated": len(str(text)) > max_chars}
             except Exception as exc:  # noqa: BLE001
                 call.status, call.error = "error", f"{type(exc).__name__}: {exc}"
-        reported = reported_cost(call.raw_response)
+        reported = self.reported_cost(call.raw_response)
         call.cost_usd = (reported if reported is not None else self.fetch_cost()) if call.status == "ok" else 0.0
         return call
