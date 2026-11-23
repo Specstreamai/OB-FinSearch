@@ -189,7 +189,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--date", required=True, help="trading day whose close stocks are asked about (YYYY-MM-DD)")
     p.add_argument("--target", default="", help="UTC moment coins are asked about (default: that day's close)")
     p.add_argument("--assets", default="equity,crypto")
-    p.add_argument("--offsets", default="", help="seconds after the target (default 5,30,60,900,3600,10800)")
+    p.add_argument("--offsets", default="", help="seconds after the target (default 60,900,3600: 1 min, 15 min, 1 h)")
     p.add_argument("--vendors", default="exa_instant")
     p.add_argument("--ids", default="")
     p.add_argument("--data", default="")
