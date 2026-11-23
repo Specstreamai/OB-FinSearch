@@ -33,10 +33,10 @@ def test_site_filters_become_include_domains():
 def test_parallel_sends_objective_and_keyword_query(monkeypatch):
     monkeypatch.setenv("PARALLEL_API_KEY", "k")
     sent = _scripted(monkeypatch, [_reply(200, {"results": []}), _reply(200, {"results": []})])
-    adapters.search("parallel_basic", "Trustmark CET1 2Q26 site:investors.trustmark.com/news",
+    adapters.search("parallel_advanced", "Trustmark CET1 2Q26 site:investors.trustmark.com/news",
                     objective="Find Trustmark's CET1 ratio at 30 June 2026.")
     assert sent[0].body == {"objective": "Find Trustmark's CET1 ratio at 30 June 2026.",
-                            "search_queries": ["Trustmark CET1 2Q26"], "mode": "basic",
+                            "search_queries": ["Trustmark CET1 2Q26"], "mode": "advanced",
                             "advanced_settings": {"max_results": 10,
                                                   "source_policy": {"include_domains": ["investors.trustmark.com/news"]}}}
     adapters.search("parallel_fast", "Boeing backlog Q2 2026")       # no objective: the query stands in for it
@@ -48,7 +48,7 @@ def test_publication_dates_are_added_to_hits(monkeypatch):
     _scripted(monkeypatch, [_reply(200, {"results": [
         {"url": "https://a.example/", "title": "A", "excerpts": ["x"], "publish_date": "2026-07-28"},
         {"url": "https://b.example/", "title": "B", "excerpts": ["y"]}]})])
-    hits = adapters.search("parallel_basic", "q").hits
+    hits = adapters.search("parallel_fast", "q").hits
     assert hits[0]["published"] == "2026-07-28" and "published" not in hits[1]
     assert search_api.result_dates({"results": [{"link": "https://c.example/", "timestamp": 1785222000}]}) == {
         "https://c.example/": "2026-07-28"}

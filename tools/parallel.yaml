@@ -11,13 +11,6 @@ setups:
     pricing:
       list_usd: 0.005
       fetch_usd: 0.001
-  parallel_basic:
-    name: Parallel basic
-    options:
-      mode: basic
-    pricing:
-      list_usd: 0.005
-      fetch_usd: 0.001
   parallel_fast:
     name: Parallel fast
     options:

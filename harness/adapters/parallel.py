@@ -34,7 +34,7 @@ def site_filters(query: str, *, paths: bool = True) -> tuple[str, list[str]]:
 
 class Parallel(Adapter):
     """Parallel search. The agent writes an objective and one keyword query; a `site:` filter in the query is sent
-    as source_policy.include_domains (turbo mode takes domains only, so paths are dropped there)."""
+    as source_policy.include_domains."""
     env_keys = ("PARALLEL_API_KEY",)
     native_fetch = True
     objective_search = True
@@ -43,7 +43,7 @@ class Parallel(Adapter):
         self.mode = mode
 
     def search_request(self, query, max_results, objective=None):
-        search_query, include = site_filters(query, paths=self.mode != "turbo")
+        search_query, include = site_filters(query)
         settings = {"max_results": max_results}
         if include:
             settings["source_policy"] = {"include_domains": include}
