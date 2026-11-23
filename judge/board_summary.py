@@ -3,7 +3,9 @@
 Per (task, vendor): accuracy is the mean over repeats of each repeat's accuracy, sd the sample standard
 deviation across repeats, ci the 95% normal interval over all graded runs, flip the share of questions whose
 verdict differs between repeats. Rows whose judge call failed are left out (re-grade them with `rejudge`),
-not counted wrong; so are answers whose every search call failed (counted per vendor). Rows that carry age_s (live filings) also get accuracy per vendor by filing age.
+not counted wrong. An answer whose every search call failed counts as wrong (run it again with
+`finsearch run --resume <dir> --retry-vendor-errors`), except in live filings, where a day can't be re-run: there
+it is left out and counted per vendor. Rows that carry age_s (live filings) also get accuracy per vendor by filing age.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import math
 from collections import defaultdict
 from pathlib import Path
 
+LIVE_FILINGS = "live-filings"   # harness/live_filings.py TASK
 AGE_BANDS = ((0, 7200, "under 2 h"), (7200, 21600, "2 to 6 h"), (21600, None, "6 h and over"))   # seconds
 
 
@@ -29,11 +32,12 @@ def _mean_sd(xs: list[float]) -> tuple[float, float]:
 def compute_summary(rows: list[dict]) -> dict:
     acc: dict = defaultdict(lambda: defaultdict(list))
     per_q: dict = defaultdict(list)
-    graded = [r for r in rows if not r.get("judge_error") and not r.get("vendor_error")]
+    graded = [r for r in rows if not r.get("judge_error") and not (r.get("vendor_error") and r["task"] == LIVE_FILINGS)]
     for r in graded:
+        correct = bool(r["correct"]) and not r.get("vendor_error")
         for task in (r["task"], "all"):
-            acc[(task, r["vendor"])][r.get("repeat", 0)].append(r["correct"])
-        per_q[(r["task"], r["vendor"], r["question_id"])].append(r["correct"])
+            acc[(task, r["vendor"])][r.get("repeat", 0)].append(correct)
+        per_q[(r["task"], r["vendor"], r["question_id"])].append(correct)
     cells = []
     for (task, vendor), reps in sorted(acc.items()):
         per_rep = [sum(v) / len(v) for v in reps.values()]
@@ -139,7 +143,8 @@ def write_summary(out_dir: Path) -> Path:
     lines += usage_lines(s["usage"])
     lines += ["", f"Runs: {s['n_rows']}; graded: {s['n_graded']}; judge errors (left out of accuracy, "
                   f"re-grade with `finsearch rejudge`): {s['judge_errors']}; answers whose every search failed "
-                  f"(left out of accuracy): {s['vendor_errors']}"]
+                  f"(counted wrong, left out in live filings; re-run with `--resume <dir> --retry-vendor-errors`): "
+                  f"{s['vendor_errors']}"]
     path = out_dir / "summary.md"
     path.write_text("\n".join(lines) + "\n")
     (out_dir / "summary.json").write_text(json.dumps(

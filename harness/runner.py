@@ -1,7 +1,8 @@
 """Running the benchmark: every (question, vendor, repeat) once, graded as it finishes.
 
 Each row of runs/<stamp>/results.jsonl holds the question, every search call and its results, any fetched
-pages, the answer, the verdict, tokens and costs. A run can be resumed: finished rows are skipped.
+pages, the answer, the verdict, tokens and costs. A run can be resumed: finished rows are skipped. With retry_vendor_errors, answers whose every search call failed
+are run again: the old rows are backed up, then replaced.
 """
 
 from __future__ import annotations
@@ -31,13 +32,30 @@ def check_env(vendor_keys: list[str]) -> None:
         raise SystemExit(f"missing environment variables: {', '.join(missing)} (see .env.example)")
 
 
+def done_runs(out_dir: Path, retry_vendor_errors: bool = False) -> set[tuple[str, str, int]]:
+    """(question, vendor, repeat) already in results.jsonl. With retry_vendor_errors, rows whose every search call
+    failed are dropped from the file first (after a backup), so they run again."""
+    rows = read_rows(out_dir)
+    if retry_vendor_errors:
+        retry = [r for r in rows if r.get("vendor_error")]
+        if retry:
+            backup = out_dir / f"results.before_vendor_retry_{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
+            backup.write_text("".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in rows))
+            rows = [r for r in rows if not r.get("vendor_error")]
+            (out_dir / "results.jsonl").write_text(
+                "".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in rows))
+            print(f"retrying {len(retry)} answers whose every search failed (backup: {backup.name})")
+    return {(r["question_id"], r["vendor"], r.get("repeat", 0)) for r in rows}
+
+
 def run(questions: list[dict], vendor_keys: list[str], *, out_dir: Path, repeats: int, mode: str, today: str,
-        data_label: str, single_concurrency: int = 64, multi_concurrency: int = 32) -> Path:
+        data_label: str, single_concurrency: int = 64, multi_concurrency: int = 32,
+        retry_vendor_errors: bool = False) -> Path:
     setup = config.class_setup(mode)
     manifest_path = out_dir / "manifest.json"
     out_dir.mkdir(parents=True, exist_ok=True)
     results_path = out_dir / "results.jsonl"
-    done = {(r["question_id"], r["vendor"], r.get("repeat", 0)) for r in read_rows(out_dir)}
+    done = done_runs(out_dir, retry_vendor_errors)
 
     # In search_fetch mode a vendor without a native fetch can't do multi-hop on equal terms: single only.
     no_fetch = {v for v in vendor_keys if not adapters.get(v).native_fetch} if mode == "search_fetch" else set()

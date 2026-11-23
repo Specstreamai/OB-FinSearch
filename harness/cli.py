@@ -3,6 +3,7 @@
   finsearch vendors                                   list the search APIs and the key each needs
   finsearch run --vendors exa_instant,tavily          historical + multi-hop lookup, 3 repeats, graded
   finsearch run --resume runs/<stamp>                 continue a stopped run
+  finsearch run --resume runs/<stamp> --retry-vendor-errors   also re-run answers whose every search failed
   finsearch rejudge runs/<stamp> [--ids a,b]          re-grade failed judge calls (or given questions)
   finsearch summary runs/<stamp>                      rebuild summary.md from results.jsonl
   finsearch live-collect --date 2026-10-07 --assets equity --vendors exa_instant
@@ -44,6 +45,8 @@ def cmd_run(args) -> None:
     from .questions import load_questions
     from .runner import check_env, run
 
+    if args.retry_vendor_errors and not args.resume:
+        raise SystemExit("--retry-vendor-errors needs --resume")
     out_dir = Path(args.resume) if args.resume else Path(args.out) / time.strftime("%Y%m%d-%H%M%S")
     manifest = out_dir / "manifest.json"
     if args.resume and manifest.exists():          # a resumed run keeps its settings
@@ -61,7 +64,8 @@ def cmd_run(args) -> None:
     check_env(keys)
     run(questions, keys, out_dir=out_dir, repeats=args.repeats, mode=args.mode, today=args.today,
         data_label=args.data or f"hf:{config.DATASET_REPO}",
-        single_concurrency=args.single_concurrency, multi_concurrency=args.multi_concurrency)
+        single_concurrency=args.single_concurrency, multi_concurrency=args.multi_concurrency,
+        retry_vendor_errors=args.retry_vendor_errors)
 
 
 def cmd_rejudge(args) -> None:
@@ -165,6 +169,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--limit", type=int, default=0, help="first N questions of each task (smoke tests)")
     p.add_argument("--out", default="runs")
     p.add_argument("--resume", default="", help="run directory to continue")
+    p.add_argument("--retry-vendor-errors", action="store_true",
+                   help="with --resume: run again the answers whose every search call failed (old rows backed up)")
     p.add_argument("--single-concurrency", type=int, default=64)
     p.add_argument("--multi-concurrency", type=int, default=32)
     p.set_defaults(fn=cmd_run)

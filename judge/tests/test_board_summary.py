@@ -38,13 +38,21 @@ def test_filing_age_bands():
     assert compute_summary([row("a", "x", 0, True)])["age"] == []
 
 
-def test_answers_whose_every_search_failed_are_left_out_and_counted():
+def test_answers_whose_every_search_failed_count_as_wrong():
     failed = [{"status": "error", "latency_ms": 900}]
     rows = [row("a", "x", 0, True, searches=[{"status": "ok", "latency_ms": 100}], wall_ms=2000, input_tokens=10),
-            row("b", "x", 0, False, searches=failed, vendor_error=True, wall_ms=3000, input_tokens=5)]
+            row("b", "x", 0, True, searches=failed, vendor_error=True, wall_ms=3000, input_tokens=5)]
     s = compute_summary(rows)
     cell = next(c for c in s["cells"] if c["task"] == "historical-lookup")
-    assert cell["accuracy"] == 1.0 and s["vendor_errors"] == 1
+    assert cell["accuracy"] == 0.5 and s["vendor_errors"] == 1 and s["n_graded"] == 2   # wrong even if judged correct
     u = s["usage"][0]
     assert u["vendor_errors"] == 1 and u["failed_calls"] == 1 and u["search_ms_median"] == 100
     assert u["input_tokens"] == 15 and u["wall_ms_median"] == 2000
+
+
+def test_live_filings_vendor_errors_are_left_out():
+    rows = [row("a", "x", 0, True, task="live-filings", age_s=600),
+            row("b", "x", 0, False, task="live-filings", age_s=600, vendor_error=True)]
+    s = compute_summary(rows)
+    cell = next(c for c in s["cells"] if c["task"] == "live-filings")
+    assert cell["accuracy"] == 1.0 and s["n_graded"] == 1 and s["vendor_errors"] == 1
